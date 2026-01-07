@@ -3,7 +3,7 @@ Parser for SEC Form 4 XML filings
 """
 from typing import List, Dict, Optional
 from datetime import datetime
-import xml.etree.ElementTree as ET
+from lxml import etree
 import re
 
 
@@ -25,8 +25,9 @@ class Form4Parser:
             # Clean up the XML content
             xml_content = Form4Parser._clean_xml(xml_content)
 
-            # Parse XML
-            root = ET.fromstring(xml_content)
+            # Parse XML using lxml with recovery mode
+            parser = etree.XMLParser(recover=True, remove_blank_text=True)
+            root = etree.fromstring(xml_content.encode('utf-8'), parser)
 
             # Extract issuer information
             issuer = Form4Parser._parse_issuer(root)
@@ -53,7 +54,7 @@ class Form4Parser:
             return None
 
     @staticmethod
-    def _parse_issuer(root: ET.Element) -> Dict:
+    def _parse_issuer(root) -> Dict:
         """Parse issuer (company) information"""
         issuer = {}
 
@@ -70,7 +71,7 @@ class Form4Parser:
         return issuer
 
     @staticmethod
-    def _parse_reporting_owner(root: ET.Element) -> Dict:
+    def _parse_reporting_owner(root) -> Dict:
         """Parse reporting owner (insider) information"""
         owner = {}
 
@@ -96,7 +97,7 @@ class Form4Parser:
         return owner
 
     @staticmethod
-    def _parse_non_derivative_transactions(root: ET.Element) -> List[Dict]:
+    def _parse_non_derivative_transactions(root) -> List[Dict]:
         """Parse non-derivative transactions (actual stock buys/sells)"""
         transactions = []
 
@@ -112,7 +113,7 @@ class Form4Parser:
         return transactions
 
     @staticmethod
-    def _parse_derivative_transactions(root: ET.Element) -> List[Dict]:
+    def _parse_derivative_transactions(root) -> List[Dict]:
         """Parse derivative transactions (options, warrants, etc.)"""
         transactions = []
 
@@ -128,7 +129,7 @@ class Form4Parser:
         return transactions
 
     @staticmethod
-    def _parse_single_transaction(txn_elem: ET.Element) -> Optional[Dict]:
+    def _parse_single_transaction(txn_elem) -> Optional[Dict]:
         """Parse a single non-derivative transaction"""
         try:
             txn = {}
@@ -181,7 +182,7 @@ class Form4Parser:
             return None
 
     @staticmethod
-    def _parse_single_derivative_transaction(txn_elem: ET.Element) -> Optional[Dict]:
+    def _parse_single_derivative_transaction(txn_elem) -> Optional[Dict]:
         """Parse a single derivative transaction"""
         try:
             txn = {}
@@ -258,7 +259,7 @@ class Form4Parser:
         return codes.get(code, f'Unknown ({code})')
 
     @staticmethod
-    def _get_bool(element: ET.Element, tag: str) -> bool:
+    def _get_bool(element, tag: str) -> bool:
         """Get boolean value from XML element"""
         elem = element.find(tag)
         if elem is not None and elem.text:
