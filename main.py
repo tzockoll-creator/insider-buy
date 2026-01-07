@@ -127,6 +127,55 @@ def cmd_watchlist(tracker, args):
             print("Add tickers with: python main.py watchlist --add TICKER")
 
 
+def cmd_debug(tracker, args):
+    """Debug data storage"""
+    import json
+    import os
+
+    print("\n=== Data Debug Info ===\n")
+
+    # Check if files exist
+    filings_file = os.path.join(tracker.config['storage']['data_dir'], 'filings.json')
+    transactions_file = os.path.join(tracker.config['storage']['data_dir'], 'transactions.json')
+
+    print(f"Filings file exists: {os.path.exists(filings_file)}")
+    print(f"Transactions file exists: {os.path.exists(transactions_file)}")
+
+    # Load and count
+    if os.path.exists(filings_file):
+        with open(filings_file, 'r') as f:
+            filings = json.load(f)
+            print(f"Total filings: {len(filings)}")
+            if filings:
+                print(f"\nSample filing keys: {list(filings[0].keys())}")
+                if 'parsed_data' in filings[0]:
+                    parsed = filings[0]['parsed_data']
+                    print(f"Sample parsed data keys: {list(parsed.keys())}")
+                    print(f"  - Non-derivative transactions: {len(parsed.get('non_derivative_transactions', []))}")
+                    print(f"  - Derivative transactions: {len(parsed.get('derivative_transactions', []))}")
+
+    if os.path.exists(transactions_file):
+        with open(transactions_file, 'r') as f:
+            transactions = json.load(f)
+            print(f"\nTotal transactions: {len(transactions)}")
+            if transactions:
+                print(f"\nSample transaction:")
+                sample = transactions[0]
+                for key, value in sample.items():
+                    print(f"  {key}: {value}")
+
+                # Count by type
+                codes = {}
+                for txn in transactions:
+                    code = txn.get('transaction_code', 'Unknown')
+                    codes[code] = codes.get(code, 0) + 1
+
+                print(f"\nTransaction codes found:")
+                for code, count in codes.items():
+                    print(f"  {code}: {count}")
+
+
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -187,6 +236,9 @@ Examples:
     watchlist_parser.add_argument('--add', help='Add ticker to watchlist')
     watchlist_parser.add_argument('--remove', help='Remove ticker from watchlist')
 
+    # Debug command
+    debug_parser = subparsers.add_parser('debug', help='Debug data storage')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -203,7 +255,8 @@ Examples:
         'sales': cmd_sales,
         'all': cmd_all,
         'summary': cmd_summary,
-        'watchlist': cmd_watchlist
+        'watchlist': cmd_watchlist,
+        'debug': cmd_debug
     }
 
     if args.command in commands:
