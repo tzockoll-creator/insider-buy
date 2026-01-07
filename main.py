@@ -151,8 +151,19 @@ def cmd_debug(tracker, args):
                 if 'parsed_data' in filings[0]:
                     parsed = filings[0]['parsed_data']
                     print(f"Sample parsed data keys: {list(parsed.keys())}")
+                    print(f"  - Issuer: {parsed.get('issuer', {})}")
+                    print(f"  - Owner: {parsed.get('reporting_owner', {})}")
                     print(f"  - Non-derivative transactions: {len(parsed.get('non_derivative_transactions', []))}")
                     print(f"  - Derivative transactions: {len(parsed.get('derivative_transactions', []))}")
+
+                    # Show a sample of what's in the parsed data
+                    if parsed.get('non_derivative_transactions'):
+                        print(f"\nSample non-derivative transaction:")
+                        print(json.dumps(parsed['non_derivative_transactions'][0], indent=2))
+
+                    if parsed.get('derivative_transactions'):
+                        print(f"\nSample derivative transaction:")
+                        print(json.dumps(parsed['derivative_transactions'][0], indent=2))
 
     if os.path.exists(transactions_file):
         with open(transactions_file, 'r') as f:
@@ -173,6 +184,19 @@ def cmd_debug(tracker, args):
                 print(f"\nTransaction codes found:")
                 for code, count in codes.items():
                     print(f"  {code}: {count}")
+
+    # Check raw XML files
+    raw_xml_dir = os.path.join(tracker.config['storage']['data_dir'], 'raw_xml')
+    if os.path.exists(raw_xml_dir):
+        xml_files = [f for f in os.listdir(raw_xml_dir) if f.endswith('.xml')]
+        print(f"\nRaw XML files: {len(xml_files)}")
+        if xml_files:
+            print(f"Sample XML file: {xml_files[0]}")
+
+    failed_xml_dir = os.path.join(tracker.config['storage']['data_dir'], 'failed_xml')
+    if os.path.exists(failed_xml_dir):
+        failed_files = [f for f in os.listdir(failed_xml_dir) if f.endswith('.xml')]
+        print(f"Failed XML files: {len(failed_files)}")
 
 
 
