@@ -132,23 +132,69 @@ class SECClient:
             if not table:
                 return None
 
+            # Look for the primary Form 4 XML document
+            # Priority:
+            # 1. Document with type "4"
+            # 2. First .xml file
+            # 3. primary_doc.xml or wf-form4_*.xml
+
+            xml_candidates = []
+
             for row in table.find_all('tr')[1:]:
                 cols = row.find_all('td')
                 if len(cols) < 3:
                     continue
 
+                # Get document info
+                sequence = cols[0].text.strip() if len(cols) > 0 else ''
+                description = cols[1].text.strip() if len(cols) > 1 else ''
+                document = cols[2].text.strip() if len(cols) > 2 else ''
                 doc_type = cols[3].text.strip() if len(cols) > 3 else ''
-                if doc_type == '4' or cols[2].text.strip().endswith('.xml'):
-                    link = cols[2].find('a')
-                    if link:
-                        xml_url = self.BASE_URL + link['href']
 
-                        # Fetch XML content
-                        time.sleep(0.1)
-                        xml_response = self.session.get(xml_url)
-                        xml_response.raise_for_status()
+                link = cols[2].find('a')
+                if not link:
+                    continue
 
-                        return xml_response.text
+                # Check if this is the Form 4 XML
+                is_form4_xml = False
+                priority = 99
+
+                if doc_type == '4':
+                    is_form4_xml = True
+                    priority = 0  # Highest priority
+                elif document.endswith('.xml'):
+                    is_form4_xml = True
+                    if 'primary' in document.lower() or sequence == '1':
+                        priority = 1
+                    else:
+                        priority = 2
+
+                if is_form4_xml:
+                    xml_candidates.append({
+                        'url': self.BASE_URL + link['href'],
+                        'priority': priority,
+                        'document': document
+                    })
+
+            # Sort by priority and try to fetch
+            xml_candidates.sort(key=lambda x: x['priority'])
+
+            for candidate in xml_candidates:
+                try:
+                    # Fetch XML content
+                    time.sleep(0.1)
+                    xml_response = self.session.get(candidate['url'])
+                    xml_response.raise_for_status()
+
+                    content = xml_response.text
+
+                    # Verify it's actually XML with ownershipDocument
+                    if '<ownershipDocument>' in content or '<?xml' in content:
+                        return content
+
+                except Exception as e:
+                    # Try next candidate
+                    continue
 
         except Exception as e:
             print(f"Error fetching Form 4 XML: {e}")
