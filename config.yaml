@@ -1,0 +1,26 @@
+# Form 4 Insider Trading Tracker Configuration
+
+# Add company ticker symbols you want to track
+# Format: ticker: Company Name (optional)
+watchlist:
+  - AAPL    # Apple Inc.
+  - MSFT    # Microsoft Corp.
+  - GOOGL   # Alphabet Inc.
+  - TSLA    # Tesla Inc.
+  - NVDA    # NVIDIA Corp.
+
+# SEC Edgar settings
+sec:
+  # Your email for SEC API (required by SEC)
+  user_agent: "YourName your.email@example.com"
+
+  # How many days back to check for filings
+  lookback_days: 7
+
+# Data storage
+storage:
+  # Directory to store downloaded filings
+  data_dir: "./data"
+
+  # Keep raw XML files
+  save_raw_xml: true
