@@ -65,6 +65,9 @@ class InsiderTracker:
         print(f"Looking back {lookback_days} days\n")
 
         total_filings = 0
+        total_new = 0
+        total_skipped = 0
+        total_failed = 0
 
         for ticker in watchlist:
             print(f"Fetching {ticker}...", end=' ')
@@ -79,21 +82,33 @@ class InsiderTracker:
             print(f"Found {len(filings)} filing(s)")
 
             # Process each filing
-            for filing in filings:
+            for i, filing in enumerate(filings, 1):
+                print(f"  [{i}/{len(filings)}] Processing {filing['filing_date']}...", end=' ')
                 # Get XML content
                 xml_content = self.client.get_form4_xml(filing['document_url'])
 
                 if not xml_content:
-                    print(f"  ⚠ Could not fetch XML for {filing['accession_number']}")
+                    print("✗ No XML")
+                    total_failed += 1
                     continue
 
                 # Parse XML
                 parsed_data = self.parser.parse(xml_content)
 
                 if not parsed_data:
-                    print(f"  ⚠ Could not parse XML for {filing['accession_number']}")
+                    print("✗ Parse failed")
+                    total_failed += 1
                     # Save problematic XML for debugging
                     self._save_failed_xml(filing['accession_number'], xml_content)
+                    continue
+
+                # Check if already exists
+                existing_filings = self.data_manager._load_json(self.data_manager.filings_file)
+                is_duplicate = any(f.get('accession_number') == filing['accession_number'] for f in existing_filings)
+
+                if is_duplicate:
+                    print("⊘ Duplicate")
+                    total_skipped += 1
                     continue
 
                 # Save to database
@@ -103,9 +118,14 @@ class InsiderTracker:
                 if self.config['storage'].get('save_raw_xml', False):
                     self._save_raw_xml(filing['accession_number'], xml_content)
 
+                # Count transactions
+                txn_count = len(parsed_data.get('non_derivative_transactions', [])) + len(parsed_data.get('derivative_transactions', []))
+                print(f"✓ Saved ({txn_count} txns)")
+
+                total_new += 1
                 total_filings += 1
 
-        print(f"\n✓ Updated {total_filings} Form 4 filing(s)")
+        print(f"\n✓ Processed {total_filings} filings: {total_new} new, {total_skipped} duplicates, {total_failed} failed")
 
     def _save_raw_xml(self, accession_number: str, xml_content: str):
         """Save raw XML file"""

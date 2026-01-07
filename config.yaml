@@ -22,5 +22,5 @@ storage:
   # Directory to store downloaded filings
   data_dir: "./data"
 
-  # Keep raw XML files
+  # Keep raw XML files (recommended for debugging)
   save_raw_xml: true
