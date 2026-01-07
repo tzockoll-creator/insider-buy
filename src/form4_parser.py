@@ -4,6 +4,7 @@ Parser for SEC Form 4 XML filings
 from typing import List, Dict, Optional
 from datetime import datetime
 import xml.etree.ElementTree as ET
+import re
 
 
 class Form4Parser:
@@ -21,6 +22,10 @@ class Form4Parser:
             Dictionary with parsed Form 4 data, or None if error
         """
         try:
+            # Clean up the XML content
+            xml_content = Form4Parser._clean_xml(xml_content)
+
+            # Parse XML
             root = ET.fromstring(xml_content)
 
             # Extract issuer information
@@ -259,3 +264,35 @@ class Form4Parser:
         if elem is not None and elem.text:
             return elem.text.strip() == '1' or elem.text.strip().lower() == 'true'
         return False
+
+    @staticmethod
+    def _clean_xml(xml_content: str) -> str:
+        """
+        Clean up XML content to handle SEC formatting issues
+
+        Args:
+            xml_content: Raw XML string
+
+        Returns:
+            Cleaned XML string
+        """
+        # Remove XML declaration if present (sometimes causes issues)
+        xml_content = re.sub(r'<\?xml[^>]*\?>', '', xml_content)
+
+        # Remove any HTML wrapper (SEC sometimes wraps XML in HTML)
+        # Look for ownershipDocument tag which is the root of Form 4 XML
+        match = re.search(r'<ownershipDocument>.*</ownershipDocument>', xml_content, re.DOTALL)
+        if match:
+            xml_content = match.group(0)
+
+        # Add XML declaration back with proper encoding
+        xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml_content
+
+        # Replace &nbsp; and other HTML entities that might cause issues
+        xml_content = xml_content.replace('&nbsp;', ' ')
+        xml_content = xml_content.replace('&amp;', '&')
+
+        # Remove any whitespace before the XML declaration
+        xml_content = xml_content.strip()
+
+        return xml_content

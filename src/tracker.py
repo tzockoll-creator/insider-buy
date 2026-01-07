@@ -92,6 +92,8 @@ class InsiderTracker:
 
                 if not parsed_data:
                     print(f"  ⚠ Could not parse XML for {filing['accession_number']}")
+                    # Save problematic XML for debugging
+                    self._save_failed_xml(filing['accession_number'], xml_content)
                     continue
 
                 # Save to database
@@ -115,7 +117,20 @@ class InsiderTracker:
         filename = f"{accession_number.replace('-', '')}.xml"
         filepath = os.path.join(xml_dir, filename)
 
-        with open(filepath, 'w') as f:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(xml_content)
+
+    def _save_failed_xml(self, accession_number: str, xml_content: str):
+        """Save XML that failed to parse for debugging"""
+        import os
+
+        xml_dir = os.path.join(self.config['storage']['data_dir'], 'failed_xml')
+        os.makedirs(xml_dir, exist_ok=True)
+
+        filename = f"{accession_number.replace('-', '')}_FAILED.xml"
+        filepath = os.path.join(xml_dir, filename)
+
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write(xml_content)
 
     def get_transactions(self, ticker: Optional[str] = None, days: Optional[int] = None):
